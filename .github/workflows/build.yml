@@ -1,0 +1,59 @@
+name: pixel build
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Test
+        run: cargo test
+
+  build:
+    needs: [tests]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cross
+        run: cargo install cross
+
+      - name: Build
+        run: |
+          cross build --release \
+            --bins \
+            --target x86_64-unknown-linux-musl
+
+      - name: Verify binaries
+        run: |
+          file target/x86_64-unknown-linux-musl/release/pixel-agent
+          file target/x86_64-unknown-linux-musl/release/pixel-agent-backfill
+          ldd target/x86_64-unknown-linux-musl/release/pixel-agent || true
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pixel-binaries
+          path: |
+            target/x86_64-unknown-linux-musl/release/pixel-agent
+            target/x86_64-unknown-linux-musl/release/pixel-agent-backfill

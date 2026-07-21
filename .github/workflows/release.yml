@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags: ["*"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Test
+        run: cargo test
+
+  build:
+    needs: [tests]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@nightly
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release --bins
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pixel-binaries
+          path: |
+            target/release/pixel-agent
+            target/release/pixel-agent-backfill
+
+  release:
+    name: Create Release
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: pixel-binaries
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release_dist
+          cp artifacts/pixel-agent release_dist/pixel-agent-x86_64
+          cp artifacts/pixel-agent-backfill release_dist/pixel-agent-backfill-x86_64
+          chmod +x release_dist/*
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release_dist/*
+            README.md
+            BACKFILL_README.md
+            pixel-agent-example.toml
+            pixel-agent-backfill-example.toml
+            pixel-agent.service
+            pixel-agent-backfill.service
+            pixel-agent-backfill.timer
+            deploy/pixel-agent-deploy.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

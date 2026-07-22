@@ -416,9 +416,9 @@ function setupChartHover() {
 
     // redraw base chart then hover markers
     drawChart(canvas, chartState.buckets.map(b => ({ x: b.x, y: b.y })), currentRange);
+    // NB: drawChart already scaled the context by devicePixelRatio —
+    // scaling here again would draw the marker at dpr-multiplied coordinates.
     const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-    ctx.scale(dpr, dpr);
     const s = chartState;
     const cur = s.buckets.find(b => b.x === best.x);
     ctx.strokeStyle = 'rgba(231, 234, 243, 0.25)';

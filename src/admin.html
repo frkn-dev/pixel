@@ -3,203 +3,482 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pixel Analytics</title>
+<title>FRKN Pixel · Web Analytics</title>
 <style>
-  :root { --bg: #f5f6f8; --card: #fff; --text: #222; --muted: #666; --border: #ddd; }
+  :root {
+    --bg: #0a0c12;
+    --surface: #11141d;
+    --surface-2: #161a26;
+    --border: #1f2534;
+    --text: #e7eaf3;
+    --muted: #8b92a8;
+    --accent: #8a7dff;
+    --accent-2: #4cd7ff;
+    --good: #34d399;
+    --bad: #f87171;
+    --radius: 14px;
+  }
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
-  header { background: #1a1a2e; color: #fff; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; }
-  header h1 { margin: 0; font-size: 1.2rem; }
-  main { padding: 1.5rem; max-width: 1400px; margin: 0 auto; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
-  .card h3 { margin: 0 0 0.5rem; font-size: 0.9rem; color: var(--muted); text-transform: uppercase; }
-  .card .value { font-size: 1.8rem; font-weight: 600; }
-  section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; overflow-x: auto; }
-  section h2 { margin: 0 0 1rem; font-size: 1.1rem; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-  th, td { padding: 0.5rem; border-bottom: 1px solid var(--border); text-align: left; }
-  th { background: #fafafa; font-weight: 600; }
-  .small { font-size: 0.8rem; color: var(--muted); }
-  .error { color: #991b1b; }
-  canvas { width: 100%; height: 240px; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background:
+      radial-gradient(1200px 500px at 80% -10%, rgba(138, 125, 255, 0.12), transparent 60%),
+      radial-gradient(900px 400px at 10% -10%, rgba(76, 215, 255, 0.08), transparent 60%),
+      var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    padding: 0.9rem 1.5rem;
+    background: rgba(10, 12, 18, 0.82);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 0.7rem; margin-right: auto; }
+  .brand .logo { width: 30px; height: 30px; display: block; }
+  .brand .name { font-weight: 700; font-size: 1.05rem; letter-spacing: 0.02em; }
+  .brand .name span { color: var(--accent); }
+  .brand .sub { display: block; font-size: 0.72rem; color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase; }
+
+  .ranges { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+  .ranges button {
+    font: inherit; font-size: 0.82rem; font-weight: 600;
+    color: var(--muted); background: transparent;
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 0.34rem 0.85rem; cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .ranges button:hover { color: var(--text); border-color: var(--accent); }
+  .ranges button.active {
+    color: #0b0d13;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent;
+  }
+
+  .status { display: flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; color: var(--muted); }
+  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6); animation: pulse 2s infinite; }
+  .status.error .dot { background: var(--bad); animation: none; }
+  .status.error { color: var(--bad); }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55); }
+    70% { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+  }
+
+  main { padding: 1.5rem; max-width: 1440px; margin: 0 auto; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+  .card {
+    background: linear-gradient(180deg, var(--surface-2), var(--surface));
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1rem 1.15rem;
+  }
+  .card h3 { margin: 0 0 0.45rem; font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; }
+  .card .value { font-size: 1.9rem; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .hint { margin-top: 0.2rem; font-size: 0.75rem; color: var(--muted); }
+
+  section.panel {
+    background: linear-gradient(180deg, var(--surface-2), var(--surface));
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.1rem 1.15rem; margin-bottom: 1.25rem;
+  }
+  section.panel h2 { margin: 0 0 0.9rem; font-size: 0.95rem; font-weight: 650; }
+  section.panel h2 .range-name { color: var(--muted); font-weight: 500; }
+
+  .chart-wrap { position: relative; }
+  canvas#visits-chart { width: 100%; height: 300px; display: block; cursor: crosshair; }
+  .chart-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; color: var(--muted); font-size: 0.9rem; }
+  .tooltip {
+    position: absolute; pointer-events: none; display: none;
+    background: #0d1017; border: 1px solid var(--border); border-radius: 10px;
+    padding: 0.45rem 0.7rem; font-size: 0.78rem; line-height: 1.45;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); white-space: nowrap; z-index: 5;
+  }
+  .tooltip b { color: var(--accent-2); font-size: 0.9rem; }
+  .tooltip .t-time { color: var(--muted); }
+
+  .tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.25rem; }
+  .tables section.panel { margin-bottom: 0; }
+  @media (max-width: 480px) { .tables { grid-template-columns: 1fr; } }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  th, td { padding: 0.42rem 0.5rem; text-align: left; }
+  thead th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); border-bottom: 1px solid var(--border); }
+  tbody tr:not(:last-child) td { border-bottom: 1px solid rgba(31, 37, 52, 0.55); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td .bar-cell { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+  td .bar { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); flex: none; min-width: 2px; opacity: 0.85; }
+  td .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .empty { color: var(--muted); font-size: 0.85rem; margin: 0.4rem 0; }
+
+  footer {
+    max-width: 1440px; margin: 0 auto; padding: 0 1.5rem 2rem;
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;
+    color: var(--muted); font-size: 0.78rem;
+  }
+  footer a { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--muted); }
+  footer a:hover { color: var(--accent-2); border-color: var(--accent-2); }
 </style>
 </head>
 <body>
 <header>
-  <h1>Pixel Analytics</h1>
-  <span class="small" id="status"></span>
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="13" height="13" rx="3" fill="#8a7dff"/>
+      <rect x="17" y="2" width="13" height="13" rx="3" fill="#4cd7ff" opacity="0.85"/>
+      <rect x="2" y="17" width="13" height="13" rx="3" fill="#4cd7ff" opacity="0.55"/>
+      <rect x="17" y="17" width="13" height="13" rx="3" fill="#8a7dff" opacity="0.35"/>
+    </svg>
+    <div>
+      <div class="name">FRKN <span>Pixel</span></div>
+      <span class="sub">Web Analytics</span>
+    </div>
+  </div>
+  <nav class="ranges" id="ranges"></nav>
+  <div class="status" id="status"><span class="dot"></span><span id="status-text">connecting…</span></div>
 </header>
+
 <main>
-  <div class="grid" id="dashboard">
-    <div class="card"><h3>Visits (24h)</h3><div class="value" id="total-visits">-</div></div>
-    <div class="card"><h3>Unique countries</h3><div class="value" id="unique-countries">-</div></div>
-    <div class="card"><h3>Top page</h3><div class="value" id="top-page">-</div></div>
+  <div class="cards">
+    <div class="card"><h3>Visits</h3><div class="value" id="total-visits">–</div><div class="hint" id="visits-hint"></div></div>
+    <div class="card"><h3>Unique pages</h3><div class="value" id="unique-pages">–</div><div class="hint">seen in period</div></div>
+    <div class="card"><h3>Countries</h3><div class="value" id="unique-countries">–</div><div class="hint">GeoIP resolved</div></div>
+    <div class="card"><h3>Top page</h3><div class="value" id="top-page" style="font-size:1.15rem;line-height:2.4rem">–</div><div class="hint" id="top-page-hint"></div></div>
   </div>
 
-  <section>
-    <h2>Visits over time</h2>
-    <canvas id="visits-chart"></canvas>
+  <section class="panel">
+    <h2>Visits over time · <span class="range-name" id="chart-range-name"></span></h2>
+    <div class="chart-wrap">
+      <canvas id="visits-chart"></canvas>
+      <div class="chart-empty" id="chart-empty">No data for this period</div>
+      <div class="tooltip" id="tooltip"></div>
+    </div>
   </section>
 
-  <section>
-    <h2>Top pages</h2>
-    <div id="top-pages"><p class="small">Loading…</p></div>
-  </section>
-
-  <section>
-    <h2>Top hosts</h2>
-    <div id="top-hosts"><p class="small">Loading…</p></div>
-  </section>
-
-  <section>
-    <h2>Top countries</h2>
-    <div id="top-countries"><p class="small">Loading…</p></div>
-  </section>
-
-  <section>
-    <h2>Top sources</h2>
-    <div id="top-sources"><p class="small">Loading…</p></div>
-  </section>
-
-  <section>
-    <h2>Top campaigns</h2>
-    <div id="top-campaigns"><p class="small">Loading…</p></div>
-  </section>
-
-  <section>
-    <h2>Top referers</h2>
-    <div id="top-referers"><p class="small">Loading…</p></div>
-  </section>
+  <div class="tables">
+    <section class="panel"><h2>Top pages</h2><div id="top-pages"><p class="empty">Loading…</p></div></section>
+    <section class="panel"><h2>Top hosts</h2><div id="top-hosts"><p class="empty">Loading…</p></div></section>
+    <section class="panel"><h2>Top countries</h2><div id="top-countries"><p class="empty">Loading…</p></div></section>
+    <section class="panel"><h2>Top sources</h2><div id="top-sources"><p class="empty">Loading…</p></div></section>
+    <section class="panel"><h2>Top campaigns</h2><div id="top-campaigns"><p class="empty">Loading…</p></div></section>
+    <section class="panel"><h2>Top referrers</h2><div id="top-referrers"><p class="empty">Loading…</p></div></section>
+  </div>
 </main>
 
+<footer>
+  <span>Built by <a href="https://frkn.org">FRKN</a> · self-hosted, cookie-free pixel analytics</span>
+  <span><a href="https://github.com/frkn-dev/pixel">github.com/frkn-dev/pixel</a></span>
+</footer>
+
 <script>
-  const $ = id => document.getElementById(id);
+'use strict';
+const $ = id => document.getElementById(id);
+const MIN = 60 * 1000, HOUR = 60 * MIN, DAY = 24 * HOUR;
 
-  function setStatus(msg, isError) {
-    const el = $('status');
-    el.textContent = msg;
-    el.className = isError ? 'error' : 'small';
+const RANGES = [
+  { id: 'today',     label: 'Today',     bucketMs: 5 * MIN,  timeAxis: 'clock' },
+  { id: 'yesterday', label: 'Yesterday', bucketMs: 5 * MIN,  timeAxis: 'clock' },
+  { id: '24h',       label: '24H',       bucketMs: 5 * MIN,  timeAxis: 'clock' },
+  { id: '7d',        label: '7D',        bucketMs: HOUR,     timeAxis: 'date'  },
+  { id: '30d',       label: '30D',       bucketMs: 6 * HOUR, timeAxis: 'date'  },
+  { id: '90d',       label: '3M',        bucketMs: DAY,      timeAxis: 'date'  },
+];
+
+let currentRange = RANGES.find(r => r.id === location.hash.slice(1)) || RANGES[2];
+let chartState = null; // { buckets: [{x, y, px, py}], geometry }
+
+function rangeWindow(range) {
+  const now = Date.now();
+  const d = new Date();
+  const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  switch (range.id) {
+    case 'today':     return { from: midnight, to: now };
+    case 'yesterday': return { from: midnight - DAY, to: midnight };
+    case '7d':        return { from: now - 7 * DAY, to: now };
+    case '30d':       return { from: now - 30 * DAY, to: now };
+    case '90d':       return { from: now - 90 * DAY, to: now };
+    default:          return { from: now - DAY, to: now }; // 24h
   }
+}
 
-  async function loadMetrics() {
-    const to = Date.now();
-    const from = to - 24 * 60 * 60 * 1000;
-    try {
-      const data = await fetch(`api/metrics?from_ms=${from}&to_ms=${to}`).then(r => r.json());
-      render(data);
-      setStatus('updated ' + new Date().toLocaleTimeString());
-    } catch (e) {
-      setStatus('error: ' + e.message, true);
-    }
-  }
+function fmtNum(n) {
+  if (n >= 100000) return Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+  return Math.round(n).toLocaleString('en-US');
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
 
-  function seriesByName(data, name) {
-    return (data.series || []).filter(s => s.metric === name);
-  }
+function setStatus(msg, isError) {
+  $('status-text').textContent = msg;
+  $('status').classList.toggle('error', !!isError);
+}
 
-  function sumSeries(series) {
-    const map = new Map();
-    series.forEach(s => {
-      s.points.forEach(p => {
-        map.set(p.x, (map.get(p.x) || 0) + p.y);
-      });
+async function loadMetrics() {
+  const { from, to } = rangeWindow(currentRange);
+  try {
+    const data = await fetch(`api/metrics?from_ms=${from}&to_ms=${to}`).then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
     });
-    return Array.from(map.entries()).sort((a, b) => a[0] - b[0]).map(([x, y]) => ({ x, y }));
+    render(data);
+    setStatus('live · updated ' + new Date().toLocaleTimeString());
+  } catch (e) {
+    setStatus('error: ' + e.message, true);
+  }
+}
+
+const seriesByName = (data, name) => (data.series || []).filter(s => s.metric === name);
+
+function sumSeries(series) {
+  const map = new Map();
+  series.forEach(s => s.points.forEach(p => map.set(p.timestamp, (map.get(p.timestamp) || 0) + p.value)));
+  return Array.from(map.entries()).sort((a, b) => a[0] - b[0]).map(([x, y]) => ({ x, y }));
+}
+
+function bucketize(points, bucketMs) {
+  if (!points.length) return [];
+  const map = new Map();
+  points.forEach(p => {
+    const b = Math.floor(p.x / bucketMs) * bucketMs;
+    map.set(b, (map.get(b) || 0) + p.y);
+  });
+  return Array.from(map.entries()).sort((a, b) => a[0] - b[0]).map(([x, y]) => ({ x, y }));
+}
+
+function topByTag(data, metric, tagKey, limit = 10) {
+  const totals = {};
+  seriesByName(data, metric).forEach(s => {
+    const value = s.tags[tagKey];
+    if (!value) return;
+    const sum = s.points.reduce((a, p) => a + p.value, 0);
+    totals[value] = (totals[value] || 0) + sum;
+  });
+  return Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, limit);
+}
+
+function render(data) {
+  const visits = seriesByName(data, 'web.visits.total');
+  const total = visits.reduce((sum, s) => sum + s.points.reduce((a, p) => a + p.value, 0), 0);
+  $('total-visits').textContent = fmtNum(total);
+  $('visits-hint').textContent = currentRange.label === '24H' ? 'last 24 hours' : currentRange.label.toLowerCase();
+
+  $('unique-pages').textContent = fmtNum(seriesByName(data, 'web.visits.page').length);
+  $('unique-countries').textContent = fmtNum(seriesByName(data, 'web.visits.country').length);
+
+  const pages = topByTag(data, 'web.visits.page', 'page', 1);
+  if (pages.length) {
+    $('top-page').textContent = pages[0][0];
+    $('top-page').title = pages[0][0];
+    $('top-page-hint').textContent = fmtNum(pages[0][1]) + ' visits';
+  } else {
+    $('top-page').textContent = '–';
+    $('top-page-hint').textContent = '';
   }
 
-  function topByTag(data, metric, tagKey, limit = 10) {
-    const totals = {};
-    seriesByName(data, metric).forEach(s => {
-      const value = s.tags[tagKey];
-      if (!value) return;
-      const sum = s.points.reduce((a, p) => a + p.y, 0);
-      totals[value] = (totals[value] || 0) + sum;
-    });
-    return Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, limit);
+  $('chart-range-name').textContent = currentRange.label === '24H' ? 'last 24 hours' : currentRange.label;
+  drawChart($('visits-chart'), bucketize(sumSeries(visits), currentRange.bucketMs), currentRange);
+
+  renderTable($('top-pages'), topByTag(data, 'web.visits.page', 'page', 15));
+  renderTable($('top-hosts'), topByTag(data, 'web.visits.host', 'host', 15));
+  renderTable($('top-countries'), topByTag(data, 'web.visits.country', 'country', 15));
+  renderTable($('top-sources'), topByTag(data, 'web.visits.utm_source', 'utm_source', 15));
+  renderTable($('top-campaigns'), topByTag(data, 'web.visits.utm_campaign', 'utm_campaign', 15));
+  renderTable($('top-referrers'), topByTag(data, 'web.visits.referer_domain', 'referer_domain', 15));
+}
+
+function renderTable(el, rows) {
+  if (!rows.length) { el.innerHTML = '<p class="empty">No data for this period</p>'; return; }
+  const max = rows[0][1] || 1;
+  const body = rows.map(([name, value]) => {
+    const w = Math.max(2, Math.round((value / max) * 90));
+    return `<tr><td><div class="bar-cell"><span class="bar" style="width:${w}px"></span><span class="name" title="${escapeHtml(name)}">${escapeHtml(name)}</span></div></td>` +
+           `<td class="num">${fmtNum(value)}</td></tr>`;
+  }).join('');
+  el.innerHTML = `<table><thead><tr><th>Name</th><th class="num">Visits</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function niceCeil(v) {
+  if (v <= 1) return 1;
+  const pow = Math.pow(10, Math.floor(Math.log10(v)));
+  const n = v / pow;
+  const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+  return nice * pow;
+}
+
+function axisLabel(ts, mode) {
+  const d = new Date(ts);
+  if (mode === 'clock') return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+function tooltipTitle(ts, bucketMs) {
+  const d = new Date(ts);
+  const date = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  if (bucketMs >= DAY) return date;
+  return date + ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function drawChart(canvas, buckets, range) {
+  const wrap = canvas.parentElement;
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.max(300, Math.floor(rect.width));
+  const h = 300;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  if (!buckets.length) {
+    $('chart-empty').style.display = 'flex';
+    chartState = null;
+    hideTooltip();
+    return;
+  }
+  $('chart-empty').style.display = 'none';
+
+  const padL = 46, padR = 14, padT = 14, padB = 28;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const minX = buckets[0].x, maxX = buckets[buckets.length - 1].x + range.bucketMs;
+  const maxY = niceCeil(Math.max(...buckets.map(b => b.y), 1));
+
+  // grid + y labels
+  ctx.strokeStyle = 'rgba(139, 146, 168, 0.14)';
+  ctx.fillStyle = '#8b92a8';
+  ctx.font = '11px -apple-system, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.lineWidth = 1;
+  const ticks = 4;
+  for (let i = 0; i <= ticks; i++) {
+    const v = (maxY / ticks) * i;
+    const y = padT + plotH - (v / maxY) * plotH;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+    ctx.fillText(fmtNum(v), padL - 8, y + 4);
   }
 
-  function render(data) {
-    const visits = seriesByName(data, 'web.visits.total');
-    const total = visits.reduce((sum, s) => sum + s.points.reduce((a, p) => a + p.y, 0), 0);
-    $('total-visits').textContent = Math.round(total).toLocaleString();
-
-    const countries = seriesByName(data, 'web.visits.country');
-    $('unique-countries').textContent = countries.length.toLocaleString();
-
-    const pages = topByTag(data, 'web.visits.page', 'page', 1);
-    $('top-page').textContent = pages.length ? pages[0][0] : '-';
-
-    drawChart($('visits-chart'), sumSeries(visits), 'Visits');
-    renderTable($('top-pages'), topByTag(data, 'web.visits.page', 'page', 20));
-    renderTable($('top-hosts'), topByTag(data, 'web.visits.host', 'host', 20));
-    renderTable($('top-countries'), topByTag(data, 'web.visits.country', 'country', 20));
-    renderTable($('top-sources'), topByTag(data, 'web.visits.utm_source', 'utm_source', 20));
-    renderTable($('top-campaigns'), topByTag(data, 'web.visits.utm_campaign', 'utm_campaign', 20));
-    renderTable($('top-referers'), topByTag(data, 'web.visits.referer_domain', 'referer_domain', 20));
+  // x labels
+  ctx.textAlign = 'center';
+  const labelCount = Math.min(8, buckets.length);
+  for (let i = 0; i < labelCount; i++) {
+    const b = buckets[Math.round(i * (buckets.length - 1) / Math.max(1, labelCount - 1))];
+    const x = padL + ((b.x - minX) / (maxX - minX)) * plotW;
+    ctx.fillText(axisLabel(b.x, range.timeAxis), x, h - 8);
   }
 
-  function renderTable(el, rows) {
-    if (!rows.length) {
-      el.innerHTML = '<p class="small">No data</p>';
-      return;
-    }
-    const body = rows.map(([name, value]) => `<tr><td>${name}</td><td class="small">${Math.round(value).toLocaleString()}</td></tr>`).join('');
-    el.innerHTML = `<table><tr><th>Name</th><th>Visits</th></tr>${body}</table>`;
-  }
+  const px = b => padL + ((b.x - minX) / (maxX - minX)) * plotW;
+  const py = v => padT + plotH - (v / maxY) * plotH;
 
-  function drawChart(canvas, points, label) {
-    if (!points.length) {
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#999';
-      ctx.fillText('No data', 10, 60);
-      return;
-    }
+  // area fill
+  const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
+  grad.addColorStop(0, 'rgba(138, 125, 255, 0.38)');
+  grad.addColorStop(1, 'rgba(138, 125, 255, 0.01)');
+  ctx.beginPath();
+  buckets.forEach((b, i) => { const x = px(b), y = py(b.y); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
+  ctx.lineTo(px(buckets[buckets.length - 1]), padT + plotH);
+  ctx.lineTo(px(buckets[0]), padT + plotH);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // line
+  ctx.beginPath();
+  buckets.forEach((b, i) => { const x = px(b), y = py(b.y); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
+  ctx.strokeStyle = '#8a7dff';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  chartState = {
+    buckets: buckets.map(b => ({ x: b.x, y: b.y, px: px(b), py: py(b.y) })),
+    padT, padB, padL, padR, plotH, w, h, bucketMs: range.bucketMs,
+  };
+}
+
+function hideTooltip() { $('tooltip').style.display = 'none'; }
+
+function setupChartHover() {
+  const canvas = $('visits-chart'), tip = $('tooltip'), wrap = canvas.parentElement;
+  canvas.addEventListener('mousemove', e => {
+    if (!chartState || !chartState.buckets.length) return;
     const rect = canvas.getBoundingClientRect();
-    canvas.width = Math.max(300, Math.floor(rect.width)) || 300;
-    canvas.height = 240;
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width;
-    const h = canvas.height;
-    const pad = 30;
-
-    const minX = points[0].x;
-    const maxX = points[points.length - 1].x;
-    const values = points.map(p => p.y);
-    let minY = Math.min(...values);
-    let maxY = Math.max(...values);
-    if (minY === maxY) { minY = 0; maxY = maxY || 1; }
-
-    ctx.clearRect(0, 0, w, h);
-    ctx.strokeStyle = '#e5e7eb';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(pad, pad);
-    ctx.lineTo(pad, h - pad);
-    ctx.lineTo(w - pad, h - pad);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#1a1a2e';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    points.forEach((p, i) => {
-      const x = pad + (maxX === minX ? 0 : (p.x - minX) / (maxX - minX)) * (w - 2 * pad);
-      const y = h - pad - (maxY === minY ? 0 : (p.y - minY) / (maxY - minY)) * (h - 2 * pad);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+    const mx = e.clientX - rect.left;
+    let best = null, bestDist = Infinity;
+    chartState.buckets.forEach(b => {
+      const d = Math.abs(b.px - mx);
+      if (d < bestDist) { bestDist = d; best = b; }
     });
+    if (!best) return;
+
+    // redraw base chart then hover markers
+    drawChart(canvas, chartState.buckets.map(b => ({ x: b.x, y: b.y })), currentRange);
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    ctx.scale(dpr, dpr);
+    const s = chartState;
+    const cur = s.buckets.find(b => b.x === best.x);
+    ctx.strokeStyle = 'rgba(231, 234, 243, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cur.px, s.padT); ctx.lineTo(cur.px, s.padT + s.plotH); ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cur.px, cur.py, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#4cd7ff';
+    ctx.fill();
+    ctx.strokeStyle = '#0a0c12';
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    ctx.fillStyle = '#666';
-    ctx.font = '11px sans-serif';
-    ctx.fillText(label, pad + 4, pad - 6);
-    ctx.fillText(Math.round(maxY).toLocaleString(), 2, pad + 8);
-    ctx.fillText(Math.round(minY).toLocaleString(), 2, h - pad - 4);
-  }
+    tip.innerHTML = `<b>${fmtNum(cur.y)}</b> visits<br><span class="t-time">${tooltipTitle(cur.x, s.bucketMs)}</span>`;
+    tip.style.display = 'block';
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let left = cur.px + 14, top = cur.py - th - 10;
+    if (left + tw > rect.width - 6) left = cur.px - tw - 14;
+    if (top < 0) top = cur.py + 14;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  });
+  canvas.addEventListener('mouseleave', () => {
+    hideTooltip();
+    if (chartState) drawChart(canvas, chartState.buckets.map(b => ({ x: b.x, y: b.y })), currentRange);
+  });
+  wrap.addEventListener('resize', () => {
+    if (chartState) drawChart(canvas, chartState.buckets.map(b => ({ x: b.x, y: b.y })), currentRange);
+  });
+}
 
-  loadMetrics();
-  setInterval(loadMetrics, 30000);
+function setupRanges() {
+  const nav = $('ranges');
+  RANGES.forEach(r => {
+    const btn = document.createElement('button');
+    btn.textContent = r.label;
+    btn.dataset.range = r.id;
+    if (r.id === currentRange.id) btn.classList.add('active');
+    btn.addEventListener('click', () => {
+      currentRange = r;
+      location.hash = r.id;
+      nav.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.range === r.id));
+      loadMetrics();
+    });
+    nav.appendChild(btn);
+  });
+  window.addEventListener('hashchange', () => {
+    const r = RANGES.find(x => x.id === location.hash.slice(1));
+    if (r && r.id !== currentRange.id) {
+      currentRange = r;
+      nav.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.range === r.id));
+      loadMetrics();
+    }
+  });
+}
+
+setupRanges();
+setupChartHover();
+loadMetrics();
+setInterval(loadMetrics, 30000);
 </script>
 </body>
 </html>

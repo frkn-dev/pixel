@@ -13,6 +13,7 @@ poll_interval_sec = 30
 flush_interval_sec = 300
 snapshot_interval_sec = 300
 bucket_minutes = 5
-retention_hours = 168
-max_points = 10000
-retention_seconds = 604800
+# Keep ~90 days of history so the admin UI can show ranges up to 3 months.
+retention_hours = 2160
+max_points = 30000
+retention_seconds = 7776000

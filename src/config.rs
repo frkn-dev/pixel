@@ -95,14 +95,17 @@ fn default_bucket_minutes() -> u64 {
     5
 }
 
+// Defaults keep ~90 days of 5-minute buckets so the admin UI can show
+// ranges up to "3 months" out of the box.
 fn default_retention_hours() -> u64 {
-    168
+    90 * 24
 }
 
 fn default_max_points() -> usize {
-    10000
+    // 90 days * 288 five-minute buckets = 25920, with headroom.
+    30000
 }
 
 fn default_retention_seconds() -> i64 {
-    7 * 24 * 60 * 60
+    90 * 24 * 60 * 60
 }

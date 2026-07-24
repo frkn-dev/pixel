@@ -17,3 +17,5 @@ bucket_minutes = 5
 retention_hours = 2160
 max_points = 30000
 retention_seconds = 7776000
+# Hosts offered in the dashboard host filter. Empty = derive from data.
+# dashboard_hosts = ["frkn.org", "labs.frkn.org", "beta.frkn.org"]

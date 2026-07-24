@@ -55,6 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             server_config.admin_listen.clone(),
             server_config.admin_port,
             server_config.cors_origins.clone(),
+            server_config.dashboard_hosts.clone(),
             server_aggregator,
             server_storage,
         )

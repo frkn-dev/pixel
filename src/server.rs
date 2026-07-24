@@ -27,12 +27,22 @@ pub async fn start_admin_server(
     listen: String,
     port: u16,
     cors_origins: Vec<String>,
+    dashboard_hosts: Vec<String>,
     aggregator: Arc<Mutex<Aggregator>>,
     storage: Arc<WebMetricStorage>,
 ) {
     let index = warp::path::end()
         .and(warp::get())
         .map(|| warp::reply::html(ADMIN_HTML));
+
+    let hosts = std::sync::Arc::new(dashboard_hosts);
+    let ui_config = warp::path("api")
+        .and(warp::path("config"))
+        .and(warp::get())
+        .and(warp::path::end())
+        .map(move || {
+            warp::reply::json(&serde_json::json!({ "hosts": hosts.as_slice() }))
+        });
 
     let metrics_api = warp::path("api")
         .and(warp::path("metrics"))
@@ -54,6 +64,7 @@ pub async fn start_admin_server(
         .map(|| "ok");
 
     let routes = index
+        .or(ui_config)
         .or(metrics_api)
         .or(prometheus)
         .or(health);

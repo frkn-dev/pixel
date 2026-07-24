@@ -38,10 +38,28 @@ Time ranges: **Today · Yesterday · 24H · 7D · 30D · 3M** — switchable in 
 The dashboard tracks:
 
 - **Visits over time** — interactive chart with hover tooltips
+- **Per-host analytics** — filter the whole dashboard by host (`frkn.org`, `labs.frkn.org`, …)
 - **Top pages / hosts** — what content actually gets read
 - **Top countries** — GeoIP-resolved visitor geography
 - **Top sources & campaigns** — full `utm_source` / `utm_medium` / `utm_campaign` attribution
 - **Top referrers** — who sends you traffic
+
+### Per-host analytics
+
+Running several sites or environments through one pixel? Pick a host in the
+header and every card, chart and table shows only that host's data — switch
+back to *All hosts* for the global view. The selection lives in the URL hash
+(`#7d/labs.frkn.org`), so filtered views are shareable links.
+
+![Dashboard filtered by host](docs/screenshots/dashboard-host.png)
+
+Hosts are listed via config — nothing is hardcoded:
+
+```toml
+dashboard_hosts = ["frkn.org", "labs.frkn.org", "beta.frkn.org"]
+```
+
+Leave it empty and the list is built automatically from the hosts seen in the data.
 
 ## How it works
 
@@ -100,7 +118,7 @@ auth (see [`docs/nginx.conf`](docs/nginx.conf)) and you're done.
 One-command deploy of a released version:
 
 ```bash
-sudo ./deploy/pixel-agent-deploy.sh v0.5.16
+sudo ./deploy/pixel-agent-deploy.sh v0.2.0
 ```
 
 ## Configuration
@@ -118,6 +136,7 @@ All options with defaults — see [`pixel-agent-example.toml`](pixel-agent-examp
 | `snapshot_path` | `/var/lib/pixel-agent/metrics.snapshot` | persistent state file |
 | `poll_interval_sec` | `30` | log tail interval |
 | `cors_origins` | `["http://localhost:8080"]` | allowed API origins |
+| `dashboard_hosts` | `[]` (auto from data) | hosts shown in the dashboard host filter |
 
 > **Note:** ranges up to *3 months* need the matching retention — the defaults
 > above already cover it. If you lower `retention_hours`, long ranges in the UI
@@ -129,6 +148,7 @@ All options with defaults — see [`pixel-agent-example.toml`](pixel-agent-examp
 | --- | --- |
 | `GET /` | admin dashboard |
 | `GET /api/metrics?from_ms=…&to_ms=…` | raw time-series JSON for any range |
+| `GET /api/config` | dashboard UI config (host filter list) |
 | `GET /metrics` | Prometheus exposition (last 24h sums) |
 | `GET /health` | health check |
 

@@ -50,6 +50,11 @@ pub struct AgentConfig {
 
     #[serde(default = "default_retention_seconds")]
     pub retention_seconds: i64,
+
+    /// Hosts offered in the admin UI host filter. When empty, the UI builds
+    /// the list from hosts actually seen in the data.
+    #[serde(default)]
+    pub dashboard_hosts: Vec<String>,
 }
 
 impl AgentConfig {

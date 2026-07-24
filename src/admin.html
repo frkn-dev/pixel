@@ -59,6 +59,20 @@
     border-color: transparent;
   }
 
+  html { color-scheme: dark; }
+  .host-select {
+    font: inherit; font-size: 0.82rem; font-weight: 600;
+    color: var(--text); background-color: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 0.34rem 1.7rem 0.34rem 0.85rem; cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238b92a8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.65rem center;
+    transition: border-color .15s;
+  }
+  .host-select:hover, .host-select:focus { border-color: var(--accent); outline: none; }
+
   .status { display: flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; color: var(--muted); }
   .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6); animation: pulse 2s infinite; }
   .status.error .dot { background: var(--bad); animation: none; }
@@ -138,6 +152,9 @@
       <span class="sub">Web Analytics</span>
     </div>
   </div>
+  <select class="host-select" id="host-select" title="Filter by host">
+    <option value="">All hosts</option>
+  </select>
   <nav class="ranges" id="ranges"></nav>
   <div class="status" id="status"><span class="dot"></span><span id="status-text">connecting…</span></div>
 </header>
@@ -188,8 +205,15 @@ const RANGES = [
   { id: '90d',       label: '3M',        bucketMs: DAY,      timeAxis: 'date'  },
 ];
 
-let currentRange = RANGES.find(r => r.id === location.hash.slice(1)) || RANGES[2];
+// Hash format: "#<range>" or "#<range>/<host>", e.g. "#7d/labs.frkn.org"
+const hashParts = location.hash.slice(1).split('/');
+let currentRange = RANGES.find(r => r.id === hashParts[0]) || RANGES[2];
+let currentHost = hashParts[1] ? decodeURIComponent(hashParts[1]) : '';
 let chartState = null; // { buckets: [{x, y, px, py}], geometry }
+
+function syncHash() {
+  location.hash = currentRange.id + (currentHost ? '/' + encodeURIComponent(currentHost) : '');
+}
 
 function rangeWindow(range) {
   const now = Date.now();
@@ -234,6 +258,15 @@ async function loadMetrics() {
 
 const seriesByName = (data, name) => (data.series || []).filter(s => s.metric === name);
 
+// Host-aware access: with a host selected, read the *_by_host metrics instead
+// (total visits for a host come from web.visits.host).
+function viewSeries(data, base) {
+  if (!currentHost) return seriesByName(data, base);
+  if (base === 'web.visits.total')
+    return seriesByName(data, 'web.visits.host').filter(s => s.tags.host === currentHost);
+  return seriesByName(data, base + '_by_host').filter(s => s.tags.host === currentHost);
+}
+
 function sumSeries(series) {
   const map = new Map();
   series.forEach(s => s.points.forEach(p => map.set(p.timestamp, (map.get(p.timestamp) || 0) + p.value)));
@@ -252,7 +285,7 @@ function bucketize(points, bucketMs) {
 
 function topByTag(data, metric, tagKey, limit = 10) {
   const totals = {};
-  seriesByName(data, metric).forEach(s => {
+  viewSeries(data, metric).forEach(s => {
     const value = s.tags[tagKey];
     if (!value) return;
     const sum = s.points.reduce((a, p) => a + p.value, 0);
@@ -262,13 +295,24 @@ function topByTag(data, metric, tagKey, limit = 10) {
 }
 
 function render(data) {
-  const visits = seriesByName(data, 'web.visits.total');
+  // When no host list is configured, build it from hosts seen in the data.
+  if (deriveHostsFromData && !currentHost) {
+    const hosts = [...new Set(seriesByName(data, 'web.visits.host').map(s => s.tags.host).filter(Boolean))].sort();
+    const key = hosts.join('|');
+    if (hosts.length > 1 && key !== derivedHostsKey) {
+      derivedHostsKey = key;
+      setHostOptions(hosts);
+    }
+  }
+
+  const rangeLabel = currentRange.label === '24H' ? 'last 24 hours' : currentRange.label;
+  const visits = viewSeries(data, 'web.visits.total');
   const total = visits.reduce((sum, s) => sum + s.points.reduce((a, p) => a + p.value, 0), 0);
   $('total-visits').textContent = fmtNum(total);
-  $('visits-hint').textContent = currentRange.label === '24H' ? 'last 24 hours' : currentRange.label.toLowerCase();
+  $('visits-hint').textContent = (currentHost ? currentHost + ' · ' : '') + rangeLabel.toLowerCase();
 
-  $('unique-pages').textContent = fmtNum(seriesByName(data, 'web.visits.page').length);
-  $('unique-countries').textContent = fmtNum(seriesByName(data, 'web.visits.country').length);
+  $('unique-pages').textContent = fmtNum(viewSeries(data, 'web.visits.page').length);
+  $('unique-countries').textContent = fmtNum(viewSeries(data, 'web.visits.country').length);
 
   const pages = topByTag(data, 'web.visits.page', 'page', 1);
   if (pages.length) {
@@ -280,15 +324,19 @@ function render(data) {
     $('top-page-hint').textContent = '';
   }
 
-  $('chart-range-name').textContent = currentRange.label === '24H' ? 'last 24 hours' : currentRange.label;
+  $('chart-range-name').textContent = (currentHost ? currentHost + ' · ' : '') + rangeLabel;
   drawChart($('visits-chart'), bucketize(sumSeries(visits), currentRange.bucketMs), currentRange);
 
   renderTable($('top-pages'), topByTag(data, 'web.visits.page', 'page', 15));
-  renderTable($('top-hosts'), topByTag(data, 'web.visits.host', 'host', 15));
   renderTable($('top-countries'), topByTag(data, 'web.visits.country', 'country', 15));
   renderTable($('top-sources'), topByTag(data, 'web.visits.utm_source', 'utm_source', 15));
   renderTable($('top-campaigns'), topByTag(data, 'web.visits.utm_campaign', 'utm_campaign', 15));
   renderTable($('top-referrers'), topByTag(data, 'web.visits.referer_domain', 'referer_domain', 15));
+
+  // The hosts table is redundant when a single host is selected.
+  const hostsPanel = $('top-hosts').closest('section');
+  hostsPanel.style.display = currentHost ? 'none' : '';
+  if (!currentHost) renderTable($('top-hosts'), topByTag(data, 'web.visits.host', 'host', 15));
 }
 
 function renderTable(el, rows) {
@@ -450,6 +498,34 @@ function setupChartHover() {
   });
 }
 
+let deriveHostsFromData = false;
+let derivedHostsKey = '';
+
+function setHostOptions(hosts) {
+  const sel = $('host-select');
+  sel.innerHTML = '<option value="">All hosts</option>' +
+    hosts.map(h => `<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`).join('');
+  sel.value = [...sel.options].some(o => o.value === currentHost) ? currentHost : '';
+  if (sel.value !== currentHost) { currentHost = sel.value; syncHash(); }
+}
+
+async function setupHosts() {
+  const sel = $('host-select');
+  sel.addEventListener('change', () => {
+    currentHost = sel.value;
+    syncHash();
+    loadMetrics();
+  });
+  try {
+    const cfg = await fetch('api/config').then(r => r.json());
+    if (cfg.hosts && cfg.hosts.length) {
+      setHostOptions(cfg.hosts);
+      return;
+    }
+  } catch (e) { /* fall back to deriving hosts from metrics */ }
+  deriveHostsFromData = true;
+}
+
 function setupRanges() {
   const nav = $('ranges');
   RANGES.forEach(r => {
@@ -459,23 +535,27 @@ function setupRanges() {
     if (r.id === currentRange.id) btn.classList.add('active');
     btn.addEventListener('click', () => {
       currentRange = r;
-      location.hash = r.id;
+      syncHash();
       nav.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.range === r.id));
       loadMetrics();
     });
     nav.appendChild(btn);
   });
   window.addEventListener('hashchange', () => {
-    const r = RANGES.find(x => x.id === location.hash.slice(1));
-    if (r && r.id !== currentRange.id) {
-      currentRange = r;
-      nav.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.range === r.id));
-      loadMetrics();
-    }
+    const parts = location.hash.slice(1).split('/');
+    const r = RANGES.find(x => x.id === parts[0]) || RANGES[2];
+    const host = parts[1] ? decodeURIComponent(parts[1]) : '';
+    if (r.id === currentRange.id && host === currentHost) return;
+    currentRange = r;
+    currentHost = host;
+    nav.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.range === r.id));
+    $('host-select').value = [...$('host-select').options].some(o => o.value === host) ? host : '';
+    loadMetrics();
   });
 }
 
 setupRanges();
+setupHosts();
 setupChartHover();
 loadMetrics();
 setInterval(loadMetrics, 30000);

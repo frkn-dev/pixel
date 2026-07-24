@@ -77,6 +77,40 @@ impl Aggregator {
                 bucket.increment(format!("web.visits.{}", key), tags);
             }
         }
+
+        // Host-scoped copies power the per-host filter in the admin UI.
+        let host = event.host.clone();
+        let mut host_tags = |extra: (&str, String)| {
+            let mut tags = BTreeMap::new();
+            tags.insert("host".to_string(), host.clone());
+            tags.insert(extra.0.to_string(), extra.1);
+            tags
+        };
+        bucket.increment(
+            "web.visits.page_by_host",
+            host_tags(("page", normalize_page(&event.page))),
+        );
+        bucket.increment(
+            "web.visits.country_by_host",
+            host_tags(("country", country.clone())),
+        );
+        if !event.referer_domain.is_empty() && event.referer_domain != "direct" {
+            bucket.increment(
+                "web.visits.referer_domain_by_host",
+                host_tags(("referer_domain", event.referer_domain.clone())),
+            );
+        }
+        for (key, value) in [
+            ("utm_source", event.utm_source.as_str()),
+            ("utm_campaign", event.utm_campaign.as_str()),
+        ] {
+            if !value.is_empty() {
+                bucket.increment(
+                    format!("web.visits.{}_by_host", key),
+                    host_tags((key, value.to_string())),
+                );
+            }
+        }
     }
 
     pub fn flush(&mut self,
@@ -187,5 +221,11 @@ mod tests {
         assert!(samples.iter().any(|s| s.name == "web.visits.total" && s.value == 1.0));
         assert!(samples.iter().any(|s| s.name == "web.visits.page" && s.tags.get("page") == Some(&"/subscription".to_string())));
         assert!(samples.iter().any(|s| s.name == "web.visits.host" && s.tags.get("host") == Some(&"hehe.frkn.org".to_string())));
+        assert!(samples.iter().any(|s| s.name == "web.visits.page_by_host"
+            && s.tags.get("host") == Some(&"hehe.frkn.org".to_string())
+            && s.tags.get("page") == Some(&"/subscription".to_string())));
+        assert!(samples.iter().any(|s| s.name == "web.visits.utm_source_by_host"
+            && s.tags.get("host") == Some(&"hehe.frkn.org".to_string())
+            && s.tags.get("utm_source") == Some(&"telegram".to_string())));
     }
 }
